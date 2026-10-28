@@ -19,10 +19,13 @@
 #include <linux/module.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
+#include <linux/string.h>
 #include <linux/vmalloc.h>
 
 static struct dma_heap *sys_heap;
+static struct dma_heap *sys_dma32_heap;
 static struct dma_heap *sys_uncached_heap;
+static struct dma_heap *sys_uncached_dma32_heap;
 
 struct system_heap_buffer {
 	struct dma_heap *heap;
@@ -438,7 +441,8 @@ static const struct dma_buf_ops system_heap_buf_ops = {
 };
 
 static struct page *alloc_largest_available(unsigned long size,
-					    unsigned int max_order)
+					    unsigned int max_order,
+					    gfp_t gfp_flags)
 {
 	struct page *page;
 	int i;
@@ -449,7 +453,7 @@ static struct page *alloc_largest_available(unsigned long size,
 		if (max_order < orders[i])
 			continue;
 
-		page = alloc_pages(order_flags[i], orders[i]);
+		page = alloc_pages(order_flags[i] | gfp_flags, orders[i]);
 		if (!page)
 			continue;
 		return page;
@@ -461,7 +465,8 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 					       unsigned long len,
 					       u32 fd_flags,
 					       u64 heap_flags,
-					       bool uncached)
+					       bool uncached,
+					       gfp_t gfp_flags)
 {
 	struct system_heap_buffer *buffer;
 	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
@@ -496,7 +501,8 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 			goto free_buffer;
 		}
 
-		page = alloc_largest_available(size_remaining, max_order);
+		page = alloc_largest_available(size_remaining, max_order,
+					       gfp_flags);
 		if (!page)
 			goto free_buffer;
 
@@ -562,7 +568,11 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 					    u32 fd_flags,
 					    u64 heap_flags)
 {
-	return system_heap_do_allocate(heap, len, fd_flags, heap_flags, false);
+	gfp_t gfp_flags = strstr(dma_heap_get_name(heap), "dma32") ?
+			__GFP_DMA32 : 0;
+
+	return system_heap_do_allocate(heap, len, fd_flags, heap_flags, false,
+				       gfp_flags);
 }
 static const struct dma_heap_ops system_heap_ops = {
 	.allocate = system_heap_allocate,
@@ -573,7 +583,11 @@ static struct dma_buf *system_uncached_heap_allocate(struct dma_heap *heap,
 						     u32 fd_flags,
 						     u64 heap_flags)
 {
-	return system_heap_do_allocate(heap, len, fd_flags, heap_flags, true);
+	gfp_t gfp_flags = strstr(dma_heap_get_name(heap), "dma32") ?
+			__GFP_DMA32 : 0;
+
+	return system_heap_do_allocate(heap, len, fd_flags, heap_flags, true,
+				       gfp_flags);
 }
 
 /* Dummy function to be used until we can call coerce_mask_and_coherent */
@@ -602,6 +616,14 @@ static int system_heap_create(void)
 	if (IS_ERR(sys_heap))
 		return PTR_ERR(sys_heap);
 
+	exp_info.name = "system-dma32";
+	exp_info.ops = &system_heap_ops;
+	exp_info.priv = NULL;
+
+	sys_dma32_heap = dma_heap_add(&exp_info);
+	if (IS_ERR(sys_dma32_heap))
+		return PTR_ERR(sys_dma32_heap);
+
 	exp_info.name = "system-uncached";
 	exp_info.ops = &system_uncached_heap_ops;
 	exp_info.priv = NULL;
@@ -610,7 +632,20 @@ static int system_heap_create(void)
 	if (IS_ERR(sys_uncached_heap))
 		return PTR_ERR(sys_uncached_heap);
 
-	dma_coerce_mask_and_coherent(dma_heap_get_dev(sys_uncached_heap), DMA_BIT_MASK(64));
+	exp_info.name = "system-uncached-dma32";
+	exp_info.ops = &system_uncached_heap_ops;
+	exp_info.priv = NULL;
+
+	sys_uncached_dma32_heap = dma_heap_add(&exp_info);
+	if (IS_ERR(sys_uncached_dma32_heap))
+		return PTR_ERR(sys_uncached_dma32_heap);
+
+	dma_coerce_mask_and_coherent(dma_heap_get_dev(sys_dma32_heap),
+				     DMA_BIT_MASK(32));
+	dma_coerce_mask_and_coherent(dma_heap_get_dev(sys_uncached_heap),
+				     DMA_BIT_MASK(64));
+	dma_coerce_mask_and_coherent(dma_heap_get_dev(sys_uncached_dma32_heap),
+				     DMA_BIT_MASK(32));
 	mb(); /* make sure we only set allocate after dma_mask is set */
 	system_uncached_heap_ops.allocate = system_uncached_heap_allocate;
 
