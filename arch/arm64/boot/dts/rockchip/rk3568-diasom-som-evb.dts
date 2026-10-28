@@ -322,7 +322,7 @@
 		reg = <0x10>;
 		assigned-clocks = <&cru I2S1_MCLKOUT_TX>;
 		assigned-clock-rates = <12288000>;
-		assigned-clock-parents = <&cru CLK_I2S1_8CH_TX>;
+		assigned-clock-parents = <&cru MCLK_I2S1_8CH_TX>;
 		clocks = <&cru I2S1_MCLKOUT_TX>;
 		DVDD-supply = <&vcc1v8_sys>;
 		AVDD-supply = <&vcc3v3_sys>;
@@ -410,14 +410,14 @@
 	reset-gpios = <&gpio1 RK_PB1 GPIO_ACTIVE_HIGH>;
 	vpcie3v3-supply = <&vcc3v3_pcie20>;
 	supports-clkreq;
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie30phy {
 	data-lanes = <1 1>;
 	rockchip,pipe-grf = <&pipegrf>;
 	phy-supply = <&vcc3v3_pi6c>;
-	status = "okay";
+	status = "disabled";
 };
 
 &pcie3x2 {
@@ -426,7 +426,7 @@
 	reset-gpios = <&gpio4 RK_PC4 GPIO_ACTIVE_HIGH>;
 	vpcie3v3-supply = <&vcc3v3_pi6c>;
 	supports-clkreq;
-	status = "okay";
+	status = "disabled";
 };
 
 &pinctrl {
@@ -436,16 +436,18 @@
 	board {
 		board_pins: board-pins {
 			rockchip,pins =
-				<1 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>,
-				<1 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>,
-				<1 RK_PA7 RK_FUNC_GPIO &pcfg_pull_none>,
-				<1 RK_PB0 RK_FUNC_GPIO &pcfg_pull_none>,
-				<1 RK_PA3 RK_FUNC_GPIO &pcfg_pull_none>,
-				<1 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>,
-				<2 RK_PC2 RK_FUNC_GPIO &pcfg_pull_none>,
-				<2 RK_PC1 RK_FUNC_GPIO &pcfg_pull_none>,
-				<2 RK_PB2 RK_FUNC_GPIO &pcfg_pull_none>,
-				<2 RK_PB1 RK_FUNC_GPIO &pcfg_pull_none>;
+				<1 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>,
+				<1 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>,
+				<1 RK_PA7 RK_FUNC_GPIO &pcfg_pull_up>,
+				<1 RK_PB0 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+
+	dsi {
+		dsi_pins: dsi-pins {
+			rockchip,pins =
+				<0 RK_PC5 RK_FUNC_GPIO &pcfg_pull_up>,
+				<0 RK_PB6 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
 
@@ -685,6 +687,61 @@
 	status = "okay";
 };
 
+&dsi0 {
+	status = "okay";
+
+	panel@0 {
+		pinctrl-names = "default";
+		pinctrl-0 = <&dsi_pins>;
+		compatible = "elida,kd50t048a", "sitronix,st7701";
+		reg = <0>;
+		backlight = <&backlight>;
+		reset-gpios = <&gpio0 RK_PB6 GPIO_ACTIVE_LOW>;
+		enable-gpios = <&gpio0 RK_PC5 GPIO_ACTIVE_HIGH>;
+		VCC-supply = <&vcc3v3_sys>;
+		IOVCC-supply = <&vcc1v8_sys>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+
+				panel_in_dsi: endpoint {
+					remote-endpoint = <&dsi_out_panel>;
+				};
+			};
+		};
+	};
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@1 {
+			reg = <1>;
+
+			dsi_out_panel: endpoint {
+				remote-endpoint = <&panel_in_dsi>;
+			};
+		};
+	};
+};
+
+&video_phy0 {
+	status = "okay";
+};
+
+&dsi0_in_vp1 {
+	status = "okay";
+};
+
+&route_dsi0 {
+	status = "okay";
+	connect = <&vp1_out_dsi0>;
+};
+
 &route_hdmi {
 	status = "okay";
 	connect = <&vp0_out_hdmi>;
@@ -705,12 +762,16 @@
 
 &rknpu {
 	rknpu-supply = <&vdd_npu>;
-	status = "disabled";
+	status = "okay";
+};
+
+&rknpu_mmu {
+	status = "okay";
 };
 
 &bus_npu {
 	bus-supply = <&vdd_logic>;
-	status = "disabled";
+	status = "okay";
 };
 
 &mpp_srv {

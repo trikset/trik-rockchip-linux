@@ -63,6 +63,40 @@
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 	};
+
+	gpu_opp_table_board: gpu-opp-table-board {
+		compatible = "operating-points-v2";
+
+		opp-200000000 {
+			opp-hz = /bits/ 64 <200000000>;
+			opp-microvolt = <850000 850000 1000000>;
+		};
+
+		opp-300000000 {
+			opp-hz = /bits/ 64 <300000000>;
+			opp-microvolt = <850000 850000 1000000>;
+		};
+
+		opp-400000000 {
+			opp-hz = /bits/ 64 <400000000>;
+			opp-microvolt = <850000 850000 1000000>;
+		};
+
+		opp-600000000 {
+			opp-hz = /bits/ 64 <600000000>;
+			opp-microvolt = <900000 900000 1000000>;
+		};
+
+		opp-700000000 {
+			opp-hz = /bits/ 64 <700000000>;
+			opp-microvolt = <950000 950000 1000000>;
+		};
+
+		opp-800000000 {
+			opp-hz = /bits/ 64 <800000000>;
+			opp-microvolt = <1000000 1000000 1000000>;
+		};
+	};
 };
 
 /delete-node/ &xin32k;
@@ -77,6 +111,9 @@
 
 &gpu {
 	mali-supply = <&vdd_gpu>;
+	interrupt-names = "gpu", "mmu", "job";
+	clock-names = "gpu", "bus";
+	operating-points-v2 = <&gpu_opp_table_board>;
 };
 
 &hdmi {
@@ -152,6 +189,8 @@
 
 			vdd_npu: DCDC_REG4 {
 				regulator-name = "vdd_npu";
+				regulator-always-on;
+				regulator-boot-on;
 				regulator-initial-mode = <0x2>;
 				regulator-min-microvolt = <850000>;
 				regulator-max-microvolt = <1000000>;
@@ -368,6 +407,8 @@
 
 &usb2phy0 {
 	clock-output-names = "clk_usbphy0_480m";
+	assigned-clocks = <&cru USB480M>;
+	assigned-clock-parents = <&cru USB480M_PHY>;
 	status = "okay";
 };
 
