@@ -344,3 +344,17 @@ config USB_ONBOARD_DEV_USB5744
 	  during hub start-up configuration stage. It is must to enable this
 	  option on AMD Kria KR260 Robotics Starter Kit as this hub is
 	  connected to USB-SD converter which mounts the root filesystem.
+
+config USB_NRF
+	tristate "nRF52833 USB driver (telemetry IN + command OUT)"
+	default n
+	help
+	  Say Y here if you want to support nRF52833 periphery module
+	  (VID 0x2FE9 / PID 0x0100).
+
+	  Provides /dev/nrfN device for reading telemetry frames (via
+	  poll + read from an isochronous or bulk IN stream), sending
+	  commands (via write to an interrupt OUT endpoint) and performing
+	  one-shot bulk and vendor control transfers (via ioctl).
+
+	  The kernel/userspace ABI is defined in <linux/nrf-usb.h>.
