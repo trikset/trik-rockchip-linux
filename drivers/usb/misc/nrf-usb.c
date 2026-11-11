@@ -426,10 +426,8 @@ static long nrf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			if (!buf)
 				return -ENOMEM;
 
-			if (!in && copy_from_user(buf, ctrl.data, ctrl.wLength)) {
-				kfree(buf);
-				return -EFAULT;
-			}
+			if (!in)
+				memcpy(buf, ctrl.data, ctrl.wLength);
 		}
 
 		mutex_lock(&dev->io_mutex);
